@@ -184,6 +184,6 @@ fun NoteCard(note: Note, modifier: Modifier = Modifier, tags: List<Tag> = emptyL
                     }
                 }
             }
-        }
+        } 
     }
 }
