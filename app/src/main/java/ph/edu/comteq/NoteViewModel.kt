@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 
 class NoteViewModel(application: Application): AndroidViewModel(application) { // Get an instance of the database and then the DAO from it.
 
+
     private val noteDao: NoteDao = AppDatabase.getDatabase(application).noteDao()
 
     // Track what the user is searching for
@@ -35,8 +36,7 @@ class NoteViewModel(application: Application): AndroidViewModel(application) { /
     fun insert(note: Note) = viewModelScope.launch{ noteDao. insertNote (note)
     }
 
-    fun update(note: Note) = viewModelScope.launch { noteDao.updateNote (note)
-    }
+    fun update(note: Note) = viewModelScope.launch { noteDao.updateNote(note) }
 
     fun delete(note: Note) = viewModelScope.launch {
         noteDao.deleteNote (note)
@@ -49,9 +49,10 @@ class NoteViewModel(application: Application): AndroidViewModel(application) { /
         return noteDao.getNoteById(id)
     }
 
-    suspend fun getNoteWithTags(noteId: Int): NoteWithTags? {
-        return noteDao.getNoteWithTags(noteId)
+    fun getNoteWithTags(noteId: Int): Flow<NoteWithTags?> {
+        return noteDao.getNoteWithTagsById(noteId)
     }
+
 
     fun insertTag(tag: Tag) = viewModelScope.launch {
         noteDao.insertTag(tag)
@@ -80,10 +81,31 @@ class NoteViewModel(application: Application): AndroidViewModel(application) { /
         return noteDao.getNotesWithTag(tagId)
     }
 
-    /**
-     * Calls the DAO transaction to insert a note along with its list of tags.
-     */
+    val allTags: Flow<List<Tag>> = noteDao.getAllTags()
+
     fun insertNoteWithTags(note: Note, tags: List<Tag>) = viewModelScope.launch {
         noteDao.insertNoteWithTags(note, tags)
+    }
+    suspend fun insertNoteWithTagsSuspend(note: Note, tags: List<Tag>) {
+        noteDao.insertNoteWithTags(note, tags)
+    }
+
+    fun updateNoteWithTags(note: Note, tags: List<Tag>) {
+        viewModelScope.launch {
+            noteDao.updateNote(note)
+            noteDao.clearTagsForNote(note.id)
+            tags.forEach { tag ->
+                noteDao.insertNoteTagCrossRef(NoteTagCrossRef(note.id, tag.id))
+            }
+        }
+    }
+    fun addTag(tagName: String) {
+        viewModelScope.launch {
+            val newTag = Tag(
+                id = 0, // auto-generated
+                name = tagName
+            )
+            noteDao.insertTag(newTag)
+        }
     }
 }
